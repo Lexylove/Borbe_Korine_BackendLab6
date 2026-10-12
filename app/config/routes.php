@@ -44,7 +44,15 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 */
 /** @var object $router **/
 
-$router->get('/', 'Welcome::index');
+$router->get('/', function () {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'name' => 'LavaLust API',
+        'status' => 'ok',
+        'message' => 'LavaLust API is running.',
+        'api' => '/api',
+    ]);
+});
 
 /*
 | -------------------------------------------------------------------
