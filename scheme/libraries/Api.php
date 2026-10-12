@@ -545,7 +545,9 @@ class Api
         $role_scopes = [
             'admin'  => ['read', 'write', 'delete'],
             'editor' => ['read', 'write'],
-            'user'   => ['read'],
+            'moderator' => ['read', 'write'],
+            // The coursework requires any authenticated account to perform CRUD.
+            'user'   => ['read', 'write', 'delete'],
         ];
 
         return $role_scopes[$role] ?? ['read'];

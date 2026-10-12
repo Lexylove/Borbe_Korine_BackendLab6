@@ -69,6 +69,7 @@ $router->get('/api', function () {
 });
 
 // Authentication
+$router->post('/api/auth/register', 'AuthController::register');
 $router->post('/api/auth/login',   'AuthController::login');
 $router->post('/api/auth/refresh', 'AuthController::refresh');
 $router->post('/api/auth/logout',  'AuthController::logout');

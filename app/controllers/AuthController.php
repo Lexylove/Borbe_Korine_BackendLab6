@@ -5,6 +5,7 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * AuthController - JWT authentication using the LavaLust Api library.
  *
  *  POST /api/auth/login    { email, password }        -> access + refresh token
+ *  POST /api/auth/register { username, email, password } -> create a user account
  *  POST /api/auth/refresh  { refresh_token }          -> new tokens
  *  POST /api/auth/logout   { refresh_token }          -> revokes the refresh token
  *  GET  /api/auth/me       (Bearer access token)      -> current user
@@ -17,6 +18,46 @@ class AuthController extends Controller
         // Load api first so CORS/security headers are sent even if something later fails
         $this->call->library('api');
         $this->call->database();
+    }
+
+    public function register()
+    {
+        $this->api->require_method('POST');
+        $this->api->rate_limit('register_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 5, 60);
+
+        $body = $this->api->body();
+        $username = trim((string) ($body['username'] ?? ''));
+        $email = strtolower(trim((string) ($body['email'] ?? '')));
+        $password = (string) ($body['password'] ?? '');
+
+        $errors = [];
+        if (!preg_match('/^[A-Za-z0-9_.-]{3,100}$/', $username)) {
+            $errors['username'] = 'Username must be 3–100 characters and use only letters, numbers, dots, underscores, or hyphens.';
+        }
+        if (strlen($email) > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Enter a valid email address (up to 255 characters).';
+        }
+        if (strlen($password) < 12 || strlen($password) > 72) {
+            $errors['password'] = 'Password must be between 12 and 72 characters.';
+        }
+        if ($errors) {
+            $this->api->respond(['error' => 'Validation failed.', 'errors' => $errors], 422);
+        }
+
+        $existing = $this->db->raw(
+            'SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1',
+            [$email, $username]
+        )->fetch(PDO::FETCH_ASSOC);
+        if ($existing) {
+            $this->api->respond_error('That email or username is already registered.', 409);
+        }
+
+        $this->db->raw(
+            "INSERT INTO users (username, email, password, role, is_active) VALUES (?, ?, ?, 'user', 1)",
+            [$username, $email, password_hash($password, PASSWORD_DEFAULT)]
+        );
+
+        $this->api->respond(['message' => 'Account created. You can now log in.'], 201);
     }
 
     public function login()
@@ -100,7 +141,8 @@ class AuthController extends Controller
 
     private function scopes($role)
     {
-        $map = ['admin' => ['read', 'write', 'delete'], 'moderator' => ['read', 'write'], 'user' => ['read']];
+        // Registered accounts must be able to complete product CRUD for the lab.
+        $map = ['admin' => ['read', 'write', 'delete'], 'moderator' => ['read', 'write'], 'user' => ['read', 'write', 'delete']];
         return $map[$role] ?? ['read'];
     }
 

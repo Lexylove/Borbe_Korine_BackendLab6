@@ -399,8 +399,8 @@ $config['security_headers'] = [
     // ── API ──
     'api_max_body' => 1048576,
     'cors' => [
-        // Comma-separated list in FRONTEND_URL, e.g. https://my-app.onrender.com,http://localhost:5173
-        'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) (getenv('FRONTEND_URL') ?: 'http://localhost:5173,http://localhost:3000'))))),
+        // Comma-separated list in FRONTEND_ORIGIN, e.g. https://my-app.onrender.com,http://localhost:5173
+        'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) (getenv('FRONTEND_ORIGIN') ?: 'http://localhost:5173,http://localhost:3000'))))),
         'credentials'     => false,
         'methods'         => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'headers'         => 'Authorization, Content-Type, X-Requested-With',

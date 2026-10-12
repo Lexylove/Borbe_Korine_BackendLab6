@@ -2,8 +2,8 @@
 
 /**
  * Creates the first login account.
- * Credentials come from .env (ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD)
- * and fall back to admin / admin@example.com / Admin@12345 - change it after the first login!
+ * Credentials come from INITIAL_ADMIN_USERNAME, INITIAL_ADMIN_EMAIL, and
+ * INITIAL_ADMIN_PASSWORD. No default credentials are used.
  */
 class Seed_default_admin_user {
 
@@ -16,9 +16,19 @@ class Seed_default_admin_user {
 
     public function up()
     {
-        $username = getenv('ADMIN_USERNAME') ?: 'admin';
-        $email    = getenv('ADMIN_EMAIL')    ?: 'admin@example.com';
-        $password = getenv('ADMIN_PASSWORD') ?: 'Admin@12345';
+        $username = trim((string) getenv('INITIAL_ADMIN_USERNAME'));
+        $email    = trim((string) getenv('INITIAL_ADMIN_EMAIL'));
+        $password = (string) getenv('INITIAL_ADMIN_PASSWORD');
+
+        if ($username === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 12) {
+            // Existing databases may already have accounts created before this
+            // seed migration was added. Do not block schema migrations in that case.
+            $existing_user = $this->_lava->db->raw("SELECT id FROM users LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            if ($existing_user) {
+                return;
+            }
+            throw new RuntimeException('Set INITIAL_ADMIN_USERNAME, a valid INITIAL_ADMIN_EMAIL, and an INITIAL_ADMIN_PASSWORD of at least 12 characters before running this migration.');
+        }
 
         $exists = $this->_lava->db->raw(
             "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
@@ -37,7 +47,11 @@ class Seed_default_admin_user {
 
     public function down()
     {
-        $email = getenv('ADMIN_EMAIL') ?: 'admin@example.com';
+        $email = trim((string) getenv('INITIAL_ADMIN_EMAIL'));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Set a valid INITIAL_ADMIN_EMAIL before rolling back this migration.');
+        }
+
         $this->_lava->db->raw("DELETE FROM users WHERE email = ?", [$email]);
     }
 }
